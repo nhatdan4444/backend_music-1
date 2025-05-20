@@ -9,6 +9,41 @@ const axios = require('axios');
 // Mô hình ánh xạ Spotify sang YouTube
 const Mapping = require('../models/mapping');
 
+// Tìm kiếm video YouTube
+router.get('/youtube/search', authMiddleware, async (req, res) => {
+  try {
+    const { query, maxResults = 5 } = req.query;
+    if (!query) {
+      return res.status(400).json({ error: 'Query is required' });
+    }
+
+    // Gọi YouTube Data API v3
+    const youtubeResponse = await axios.get('https://www.googleapis.com/youtube/v3/search', {
+      params: {
+        part: 'snippet',
+        q: query,
+        type: 'video',
+        maxResults: parseInt(maxResults),
+        key: process.env.YOUTUBE_API_KEY,
+      },
+    });
+
+    const videos = youtubeResponse.data.items.map((item) => ({
+      videoId: item.id.videoId,
+      title: item.snippet.title,
+      thumbnail: item.snippet.thumbnails.default.url,
+    }));
+
+    if (videos.length === 0) {
+      return res.status(404).json({ error: 'No videos found' });
+    }
+
+    res.json(videos);
+  } catch (error) {
+    console.error('Error in /youtube/search:', error);
+    res.status(500).json({ error: 'Failed to search YouTube: ' + error.message });
+  }
+});
 // Tìm kiếm bài hát từ Spotify và ánh xạ sang YouTube
 router.get('/spotify/search', authMiddleware, async (req, res) => {
   try {
